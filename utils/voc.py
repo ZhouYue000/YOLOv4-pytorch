@@ -72,20 +72,20 @@ if __name__ == "__main__":
     train_data_path_2007 = os.path.join(
         cfg.DATA_PATH, "VOCtrainval-2007", "VOCdevkit", "VOC2007"
     )
-    train_data_path_2012 = os.path.join(
-        cfg.DATA_PATH, "VOCtrainval-2012", "VOCdevkit", "VOC2012"
-    )
+    #train_data_path_2012 = os.path.join(
+    #    cfg.DATA_PATH, "VOCtrainval-2012", "VOCdevkit", "VOC2012"
+    #)
     train_annotation_path = os.path.join("../data", "train_annotation.txt")
     if os.path.exists(train_annotation_path):
         os.remove(train_annotation_path)
 
     # val_set   : VOC2007_test
-    test_data_path_2007 = os.path.join(
-        cfg.DATA_PATH, "VOCtest-2007", "VOCdevkit", "VOC2007"
-    )
-    test_annotation_path = os.path.join("../data", "test_annotation.txt")
-    if os.path.exists(test_annotation_path):
-        os.remove(test_annotation_path)
+    #test_data_path_2007 = os.path.join(
+    #    cfg.DATA_PATH, "VOCtest-2007", "VOCdevkit", "VOC2007"
+    #)
+    #test_annotation_path = os.path.join("../data", "test_annotation.txt")
+    #if os.path.exists(test_annotation_path):
+    #    os.remove(test_annotation_path)
 
     len_train = parse_voc_annotation(
         train_data_path_2007,
@@ -93,21 +93,21 @@ if __name__ == "__main__":
         train_annotation_path,
         use_difficult_bbox=False,
     )
-    + parse_voc_annotation(
-        train_data_path_2012,
-        "trainval",
-        train_annotation_path,
-        use_difficult_bbox=False,
-    )
-    len_test = parse_voc_annotation(
-        test_data_path_2007,
-        "test",
-        test_annotation_path,
-        use_difficult_bbox=False,
-    )
+    #+ parse_voc_annotation(
+    #    train_data_path_2012,
+    #    "trainval",
+    #    train_annotation_path,
+    #    use_difficult_bbox=False,
+    #)
+    #len_test = parse_voc_annotation(
+    #    test_data_path_2007,
+    #    "test",
+    #    test_annotation_path,
+    #    use_difficult_bbox=False,
+    #)
 
-    print(
-        "The number of images for train and test are :train : {0} | test : {1}".format(
-            len_train, len_test
-        )
-    )
+    #print(
+    #    "The number of images for train and test are :train : {0} | test : {1}".format(
+    #        len_train, len_test
+    #    )
+    #)

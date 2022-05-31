@@ -188,6 +188,8 @@ class Trainer(object):
                 lbboxes = lbboxes.to(self.device)
 
                 p, p_d = self.yolov4(imgs)
+                ##p_d(bx,by,bw,bh)
+                ##p(tx,ty,tw,th)
 
                 loss, loss_ciou, loss_conf, loss_cls = self.criterion(
                     p,

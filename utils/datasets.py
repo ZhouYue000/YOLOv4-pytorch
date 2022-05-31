@@ -6,7 +6,8 @@ sys.path.append("..")
 sys.path.append("../utils")
 import torch
 from torch.utils.data import Dataset, DataLoader
-import config.yolov4_config as cfg
+#import config.yolov4_config as cfg
+import yolov4_config as cfg
 import cv2
 import numpy as np
 import random
@@ -14,8 +15,10 @@ import random
 # from . import data_augment as dataAug
 # from . import tools
 
-import utils.data_augment as dataAug
-import utils.tools as tools
+#import utils.data_augment as dataAug
+#import utils.tools as tools
+import data_augment as dataAug
+import tools as tools
 
 
 class Build_Dataset(Dataset):
@@ -35,6 +38,7 @@ class Build_Dataset(Dataset):
         return len(self.__annotations)
 
     def __getitem__(self, item):
+        print('in __getitem__')
         assert item <= len(self), "index range error"
 
         img_org, bboxes_org = self.__parse_annotation(self.__annotations[item])
@@ -47,6 +51,9 @@ class Build_Dataset(Dataset):
         img_mix = img_mix.transpose(2, 0, 1)
 
         img, bboxes = dataAug.Mixup()(img_org, bboxes_org, img_mix, bboxes_mix)
+        print('bboxes number',len(bboxes))
+        print('img',img.shape)
+        print('*'*50+'finish read ori image')
         del img_org, bboxes_org, img_mix, bboxes_mix
 
         (
@@ -101,6 +108,7 @@ class Build_Dataset(Dataset):
         anno = annotation.strip().split(" ")
 
         img_path = anno[0]
+        print('reading image{}'.format(img_path))
         img = cv2.imread(img_path)  # H*W*C and C=BGR
         assert img is not None, "File Not Found " + img_path
         bboxes = np.array(
@@ -135,8 +143,9 @@ class Build_Dataset(Dataset):
         """
 
         anchors = np.array(cfg.MODEL["ANCHORS"])
-        strides = np.array(cfg.MODEL["STRIDES"])
-        train_output_size = self.img_size / strides
+        strides = np.array(cfg.MODEL["STRIDES"])#[8,16,32]
+        train_output_size = self.img_size / strides#[56,28,14]
+        print('train_output_size',train_output_size)
         anchors_per_scale = cfg.MODEL["ANCHORS_PER_SCLAE"]
 
         label = [
@@ -150,18 +159,24 @@ class Build_Dataset(Dataset):
             )
             for i in range(3)
         ]
+        print('initial label shape each scale',label[0].shape)
         for i in range(3):
-            label[i][..., 5] = 1.0
+            label[i][..., 5] = 1.0#the sixth position is 1 total len = 6+num_classes
 
         bboxes_xywh = [
             np.zeros((150, 4)) for _ in range(3)
         ]  # Darknet the max_num is 30
+        print('initial bboxes_xywh shape each scale',bboxes_xywh[0].shape)
         bbox_count = np.zeros((3,))
 
-        for bbox in bboxes:
+        for ii,bbox in enumerate(bboxes):# all GT bbox
+            print('%'*50+'processing the {}th GT bbox'.format(ii))
             bbox_coor = bbox[:4]
             bbox_class_ind = int(bbox[4])
             bbox_mix = bbox[5]
+            print('bbox_coor',bbox_coor)
+            print('bbox_class_ind',bbox_class_ind)
+            print('bbox_mix',bbox_mix)
 
             # onehot
             one_hot = np.zeros(self.num_classes, dtype=np.float32)
@@ -176,42 +191,49 @@ class Build_Dataset(Dataset):
                 ],
                 axis=-1,
             )
-            # print("bbox_xywh: ", bbox_xywh)
-            for j in range(len(bbox_xywh)):
+
+            for j in range(len(bbox_xywh)):# x,y,w,h
                 if int(bbox_xywh[j]) >= self.img_size:
                     differ = bbox_xywh[j] - float(self.img_size) + 1.
                     bbox_xywh[j] -= differ
+
             bbox_xywh_scaled = (
                 1.0 * bbox_xywh[np.newaxis, :] / strides[:, np.newaxis]
             )
+            print('bbox_xywh_scaled',bbox_xywh_scaled)
 
             iou = []
             exist_positive = False
-            for i in range(3):
+            for i in range(3):# get GT bbox to grid
                 anchors_xywh = np.zeros((anchors_per_scale, 4))
                 anchors_xywh[:, 0:2] = (
                     np.floor(bbox_xywh_scaled[i, 0:2]).astype(np.int32) + 0.5
                 )  # 0.5 for compensation
                 anchors_xywh[:, 2:4] = anchors[i]
+                print('anchors_xywh',anchors_xywh)
 
                 iou_scale = tools.iou_xywh_numpy(
                     bbox_xywh_scaled[i][np.newaxis, :], anchors_xywh
                 )
+                print('iou_scale',iou_scale)
                 iou.append(iou_scale)
                 iou_mask = iou_scale > 0.3
+                print('iou_mask',iou_mask)
 
-                if np.any(iou_mask):
+                if np.any(iou_mask):#found anchor for GT
                     xind, yind = np.floor(bbox_xywh_scaled[i, 0:2]).astype(
                         np.int32
                     )
 
                     # Bug : 当多个bbox对应同一个anchor时，默认将该anchor分配给最后一个bbox
-                    label[i][yind, xind, iou_mask, 0:4] = bbox_xywh
+                    label[i][yind, xind, iou_mask, 0:4] = bbox_xywh#the ith scale the yind and xind grid with anchor scale at iou mask is in charge of the bbox_xywh
                     label[i][yind, xind, iou_mask, 4:5] = 1.0
                     label[i][yind, xind, iou_mask, 5:6] = bbox_mix
                     label[i][yind, xind, iou_mask, 6:] = one_hot_smooth
 
                     bbox_ind = int(bbox_count[i] % 150)  # BUG : 150为一个先验值,内存消耗大
+                    print('bbox_count',bbox_count[i])
+                    print('bbox_ind',bbox_ind)
                     bboxes_xywh[i][bbox_ind, :4] = bbox_xywh
                     bbox_count[i] += 1
 
@@ -237,6 +259,8 @@ class Build_Dataset(Dataset):
 
         label_sbbox, label_mbbox, label_lbbox = label
         sbboxes, mbboxes, lbboxes = bboxes_xywh
+        #print('label_lbbox',label_lbbox[yind,xind,iou_mask,0:4])
+        #print('lbboxes',lbboxes)
 
         return label_sbbox, label_mbbox, label_lbbox, sbboxes, mbboxes, lbboxes
 
@@ -265,6 +289,7 @@ if __name__ == "__main__":
             print(sbboxes.shape)
             print(mbboxes.shape)
             print(lbboxes.shape)
+            break
 
             if img.shape[0] == 1:
                 labels = np.concatenate(
@@ -287,4 +312,4 @@ if __name__ == "__main__":
                 )
 
                 print(labels.shape)
-                tools.plot_box(labels, img, id=1)
+                #tools.plot_box(labels, img, id=1)

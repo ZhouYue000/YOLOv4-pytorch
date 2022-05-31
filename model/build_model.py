@@ -68,7 +68,7 @@ if __name__ == "__main__":
     from utils.flops_counter import get_model_complexity_info
 
     net = Build_Model()
-    print(net)
+    #print(net)
 
     in_img = torch.randn(1, 3, 416, 416)
     p, p_d = net(in_img)

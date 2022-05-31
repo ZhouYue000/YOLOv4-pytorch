@@ -13,7 +13,7 @@ class Yolo_head(nn.Module):
 
     def forward(self, p):
         bs, nG = p.shape[0], p.shape[-1]
-        p = p.view(bs, self.__nA, 5 + self.__nC, nG, nG).permute(0, 3, 4, 1, 2)
+        p = p.view(bs, self.__nA, 5 + self.__nC, nG, nG).permute(0, 3, 4, 1, 2)#shape (bs,N,N,3,4+1+classnumber)
 
         p_de = self.__decode(p.clone())
 
