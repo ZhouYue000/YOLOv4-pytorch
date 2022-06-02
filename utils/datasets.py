@@ -165,12 +165,12 @@ class Build_Dataset(Dataset):
 
         bboxes_xywh = [
             np.zeros((150, 4)) for _ in range(3)
-        ]  # Darknet the max_num is 30
+        ]  # Darknet the max_num is 30 asume each grid has 150 GT bbox as most
         print('initial bboxes_xywh shape each scale',bboxes_xywh[0].shape)
         bbox_count = np.zeros((3,))
 
         for ii,bbox in enumerate(bboxes):# all GT bbox
-            print('%'*50+'processing the {}th GT bbox'.format(ii))
+            print('%'*50+'processing the {}th GT bbox {}'.format(ii,bbox))
             bbox_coor = bbox[:4]
             bbox_class_ind = int(bbox[4])
             bbox_mix = bbox[5]
@@ -190,7 +190,7 @@ class Build_Dataset(Dataset):
                     bbox_coor[2:] - bbox_coor[:2],
                 ],
                 axis=-1,
-            )
+            )# GT bbox center and w h
 
             for j in range(len(bbox_xywh)):# x,y,w,h
                 if int(bbox_xywh[j]) >= self.img_size:
@@ -208,7 +208,7 @@ class Build_Dataset(Dataset):
                 anchors_xywh = np.zeros((anchors_per_scale, 4))
                 anchors_xywh[:, 0:2] = (
                     np.floor(bbox_xywh_scaled[i, 0:2]).astype(np.int32) + 0.5
-                )  # 0.5 for compensation
+                )  # 0.5 for compensation cx and cy for grid with GT
                 anchors_xywh[:, 2:4] = anchors[i]
                 print('anchors_xywh',anchors_xywh)
 
@@ -221,9 +221,12 @@ class Build_Dataset(Dataset):
                 print('iou_mask',iou_mask)
 
                 if np.any(iou_mask):#found anchor for GT
+                    
                     xind, yind = np.floor(bbox_xywh_scaled[i, 0:2]).astype(
                         np.int32
                     )
+                    print('xind',xind)
+                    print('yind',yind)
 
                     # Bug : 当多个bbox对应同一个anchor时，默认将该anchor分配给最后一个bbox
                     label[i][yind, xind, iou_mask, 0:4] = bbox_xywh#the ith scale the yind and xind grid with anchor scale at iou mask is in charge of the bbox_xywh
@@ -232,10 +235,11 @@ class Build_Dataset(Dataset):
                     label[i][yind, xind, iou_mask, 6:] = one_hot_smooth
 
                     bbox_ind = int(bbox_count[i] % 150)  # BUG : 150为一个先验值,内存消耗大
-                    print('bbox_count',bbox_count[i])
+                    #print('bbox_count',bbox_count[i])
                     print('bbox_ind',bbox_ind)
                     bboxes_xywh[i][bbox_ind, :4] = bbox_xywh
                     bbox_count[i] += 1
+                    print('bbox_count',bbox_count[i])
 
                     exist_positive = True
 
@@ -259,8 +263,9 @@ class Build_Dataset(Dataset):
 
         label_sbbox, label_mbbox, label_lbbox = label
         sbboxes, mbboxes, lbboxes = bboxes_xywh
-        #print('label_lbbox',label_lbbox[yind,xind,iou_mask,0:4])
-        #print('lbboxes',lbboxes)
+        print('label_lbbox',label_lbbox[:,:,iou_mask,0:4])
+        #print('lbboxes',lbboxes[:12,:4])
+        #print('bbox_count',bbox_count)
 
         return label_sbbox, label_mbbox, label_lbbox, sbboxes, mbboxes, lbboxes
 

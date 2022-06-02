@@ -268,7 +268,7 @@ class Trainer(object):
                     self.train_dataset.img_size = (
                         random.choice(range(10, 20)) * 32
                     )
-
+            ### finish training some epoch begin to evaluate ### 
             if (
                 cfg.TRAIN["DATA_TYPE"] == "VOC"
                 or cfg.TRAIN["DATA_TYPE"] == "Customer"

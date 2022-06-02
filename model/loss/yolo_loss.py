@@ -116,8 +116,8 @@ class YoloV4Loss(nn.Module):
         p_conf = p[..., 4:5]
         p_cls = p[..., 5:]
 
-        p_d_xywh = p_d[..., :4]
-
+        p_d_xywh = p_d[..., :4]#bx,by,bw,bh p0=[bs, grid, grid, anchors, tx+ty+tw+th+conf+cls_20]
+        #label shape [grid,grid,3,6+class_num]
         label_xywh = label[..., :4]
         label_obj_mask = label[..., 4:5]
         label_cls = label[..., 6:]
@@ -160,7 +160,7 @@ class YoloV4Loss(nn.Module):
 
 
 if __name__ == "__main__":
-    from model.build_model import Yolov4
+    from build_model import Yolov4
 
     net = Yolov4()
 
